@@ -1,4 +1,5 @@
-from prompts import classifier_system_prompt, rag_system_prompt, cuda_optimize,CUDA_EXTRA_OPT, CUDA_TOPIC_SYSTEM_PROMPT, CUDA_OPTIMIZATION_SYSTEM_PROMPT
+from prompts.prompts import classifier_system_prompt, rag_system_prompt, cuda_optimize,CUDA_EXTRA_OPT, CUDA_TOPIC_SYSTEM_PROMPT, CUDA_OPTIMIZATION_SYSTEM_PROMPT
+from prompts.sanitize_prompt import SANITIZATION_SYSTEM_PROMPT
 from models import classifier_llm, rag_llm, AgentState, Mode, analysis_llm
 import subprocess, json
 import time
@@ -43,7 +44,7 @@ def decide_workflow(state: AgentState) -> AgentState:
     - benchmark → run performance tests
     - analysis  → analyze bottlenecks
     """
-    with Trace("decide_workflow"):
+    with Trace("decide_workflow", run_id=state["run_id"]):
         prompt = classifier_system_prompt + state["prompt"]
 
         result = classifier_llm.invoke(prompt)
@@ -63,7 +64,7 @@ def run_rag(state: AgentState) -> AgentState:
     """
     Perform a similarity search over PGVector using cosine distance.
     """
-    with Trace("run_rag"):
+    with Trace("run_rag", run_id=state["run_id"]):
         embeddings = OpenAIEmbeddings(
             model="text-embedding-3-small"
         )
@@ -117,7 +118,7 @@ def run_benchmark(state: AgentState) -> AgentState:
     """
     Run all .exe files under /code and store benchmark results in state.
     """
-    with Trace("run_benchmark"):
+    with Trace("run_benchmark", run_id=state["run_id"]):
         code_dir = ROOT / "code"
         exe_files = sorted(code_dir.glob("*.exe"))
 
@@ -299,3 +300,27 @@ def retrieve_docs(query: str, k: int = 5) -> list[str]:
 
     return [row[0] for row in rows]
 
+
+
+def run_sanitization(state: AgentState) -> AgentState:
+    """
+    Sanitize and summarize the RAG answer into a single clean paragraph.
+    """
+    run_id = state.get("run_id", "UNKNOWN")
+
+    with Trace("sanitization", run_id=run_id):
+        raw_answer = state.get("answer", "").strip()
+
+        if not raw_answer:
+            state["answer"] = "No content available to sanitize."
+            return state
+
+        response = analysis_llm.invoke(
+            [
+                {"role": "system", "content": SANITIZATION_SYSTEM_PROMPT},
+                {"role": "user", "content": raw_answer},
+            ]
+        )
+
+        state["answer"] = response.content.strip()
+        return state

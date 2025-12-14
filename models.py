@@ -12,6 +12,7 @@ class AgentState(TypedDict):
     is_build_benchmark: bool
     cuda_files: List[Dict]
     answer: str
+    run_id: str
 
 
 classifier_llm = ChatOpenAI(

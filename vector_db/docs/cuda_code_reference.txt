@@ -1,0 +1,232 @@
+CUDA UNOPTIMIZED PATTERNS — BENCHMARK DETECTION REFERENCE
+========================================================
+
+This document describes COMMON PERFORMANCE ISSUES that appear INTENTIONALLY
+in unoptimized CUDA benchmark files. The LLM should use this reference to
+IDENTIFY and EXPLAIN inefficiencies found in CUDA .cu / .cpp source files.
+
+--------------------------------------------------------
+1. GLOBAL MEMORY OVERUSE
+--------------------------------------------------------
+
+Pattern:
+- Kernel loads/stores from global memory repeatedly inside loops
+- No shared memory usage for values accessed by multiple threads
+
+How to detect:
+- Code directly accesses arrays like A[i], B[i] repeatedly inside kernels
+- Absence of __shared__ declarations
+- Memory reads occur inside inner loops
+
+Why this is inefficient:
+- Global memory has high latency
+- Repeated global loads waste memory bandwidth
+
+Optimization hint:
+- Cache frequently used values in shared memory
+- Load once per block instead of per thread
+
+Expected wording by LLM:
+"Kernel is memory-bound due to excessive global memory accesses and
+lack of shared memory reuse."
+
+--------------------------------------------------------
+2. NON-COALESCED MEMORY ACCESS
+--------------------------------------------------------
+
+Pattern:
+- Threads access memory with a stride larger than 1
+- Index calculations like idx = threadIdx.x * stride
+
+How to detect:
+- threadIdx.x used with multiplication or modulo in indexing
+- Adjacent threads access non-adjacent memory
+
+Why this is inefficient:
+- Breaks memory coalescing
+- Each thread generates separate memory transactions
+
+Optimization hint:
+- Rearrange data layout
+- Use contiguous indexing per warp
+
+Expected wording by LLM:
+"Global memory accesses are non-coalesced, reducing effective bandwidth."
+
+--------------------------------------------------------
+3. BRANCH DIVERGENCE INSIDE KERNELS
+--------------------------------------------------------
+
+Pattern:
+- if/else logic based on threadIdx.x or blockIdx.x
+- Conditional branches differ per thread
+
+How to detect:
+- if (threadIdx.x % 2 == 0) or similar logic
+- Multiple execution paths inside the same warp
+
+Why this is inefficient:
+- Warps must serialize divergent paths
+- Reduces parallel execution efficiency
+
+Optimization hint:
+- Remove conditionals
+- Split into multiple kernels if needed
+
+Expected wording by LLM:
+"Warp divergence detected due to conditional branching inside kernel."
+
+--------------------------------------------------------
+4. LOW OCCUPANCY DUE TO BLOCK SIZE
+--------------------------------------------------------
+
+Pattern:
+- Kernel launched with very small block sizes (e.g. < 64 threads)
+- blockDim.x not aligned to warp size (32)
+
+How to detect:
+- <<<grid, 32>>> or <<<grid, 16>>> launches
+- No occupancy calculation or tuning
+
+Why this is inefficient:
+- Poor SM utilization
+- Insufficient warps to hide latency
+
+Optimization hint:
+- Use 128–256 threads per block
+- Evaluate occupancy with NVIDIA tools
+
+Expected wording by LLM:
+"Kernel launch configuration likely results in low occupancy."
+
+--------------------------------------------------------
+5. UNNECESSARY SYNCHRONIZATION
+--------------------------------------------------------
+
+Pattern:
+- __syncthreads() used even when threads are independent
+
+How to detect:
+- __syncthreads() appears without shared memory dependency
+- No clear producer-consumer pattern
+
+Why this is inefficient:
+- Forces all threads to wait
+- Adds stall cycles
+
+Optimization hint:
+- Remove unnecessary barriers
+- Use warp-level primitives if suitable
+
+Expected wording by LLM:
+"Unnecessary synchronization may serialize execution."
+
+--------------------------------------------------------
+6. INEFFICIENT HOST–DEVICE MEMORY TRANSFERS
+--------------------------------------------------------
+
+Pattern:
+- cudaMemcpy called repeatedly in loops
+- Synchronous transfers used exclusively
+
+How to detect:
+- cudaMemcpy inside for-loops
+- No use of cudaMemcpyAsync or streams
+
+Why this is inefficient:
+- Blocks CPU and GPU
+- Prevents overlap of computation and transfers
+
+Optimization hint:
+- Batch transfers
+- Use pinned memory and streams
+
+Expected wording by LLM:
+"Frequent synchronous host-device transfers reduce performance."
+
+--------------------------------------------------------
+7. KERNEL LAUNCH OVERHEAD DOMINATES EXECUTION
+--------------------------------------------------------
+
+Pattern:
+- Kernels perform minimal work
+- Large number of kernel launches
+
+How to detect:
+- Kernels contain very few arithmetic operations
+- Many kernel launches for simple math
+
+Why this is inefficient:
+- Kernel launch latency dominates runtime
+
+Optimization hint:
+- Fuse kernels
+- Increase per-kernel workload
+
+Expected wording by LLM:
+"Kernel launch overhead dominates execution time."
+
+--------------------------------------------------------
+8. NO USE OF FAST MATH
+--------------------------------------------------------
+
+Pattern:
+- Use of double precision unnecessarily
+- Standard math functions instead of fast intrinsics
+
+How to detect:
+- double used when float suffices
+- sin(), cos(), sqrt() instead of __sinf(), etc.
+
+Why this is inefficient:
+- Slower execution
+- Higher register pressure
+
+Optimization hint:
+- Use fast math
+- Compile with --use_fast_math if acceptable
+
+Expected wording by LLM:
+"Arithmetic operations could be optimized using fast math or lower precision."
+
+--------------------------------------------------------
+9. SERIAL SECTIONS LIMIT PARALLELISM
+--------------------------------------------------------
+
+Pattern:
+- Kernel launched for work that could be fused
+- CPU executes loops that could be on GPU
+
+How to detect:
+- for-loops on host launching kernels repeatedly
+- No batching or parallel processing
+
+Why this is inefficient:
+- Limits GPU utilization
+
+Optimization hint:
+- Move logic fully into GPU
+- Use grid-stride loops
+
+Expected wording by LLM:
+"Serial host-side control flow limits GPU parallelism."
+
+--------------------------------------------------------
+10. INTENTIONAL UNOPTIMIZED BENCHMARK CODE
+--------------------------------------------------------
+
+Important:
+Some CUDA files may be intentionally written in an unoptimized fashion
+for benchmarking, profiling, or teaching purposes.
+
+LLM behavior requirement:
+- Explicitly acknowledge intentional inefficiencies
+- Do NOT assume developer error
+- Still explain performance implications
+
+Expected wording by LLM:
+"These inefficiencies appear intentional and suitable for benchmarking."
+
+========================================================
+END OF REFERENCE
+========================================================

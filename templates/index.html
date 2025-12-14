@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">   
+                <div class="logo-icon">⚡️</div>
+                <h1 class="app-title">NVIDIA's CUDA Assistant</h1>
+            </div>
+            <div class="header-right">
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <div class="status-dot active"></div>
+                        <span class="status-label">Connected to RAG</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot active"></div>
+                        <span class="status-label">API Key Configured</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot active"></div>
+                        <span class="status-label">LLM Connected</span>
+                    </div>
+                </div>
+                <div class="user-profile">👤</div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <button class="new-chat-btn" id="newChatBtn">
+                    <span class="plus-icon">+</span>
+                    New Chat
+                </button>
+                
+                <div class="chat-history">
+                    <div class="chat-item active" data-chat-id="current">
+                        <span class="chat-title">Current Chat</span>
+                        <span class="chat-time">Now</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-footer">
+                    <a href="#" class="footer-link">
+                        <span class="icon">⚙️</span>
+                        Settings
+                    </a>
+                    <a href="#" class="footer-link">
+                        <span class="icon">?</span>
+                        Help
+                    </a>
+                </div>
+            </aside>
+
+            <!-- Chat Area -->
+            <main class="chat-area">
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Welcome Message -->
+                    <div class="welcome-message" id="welcomeMessage">
+                        <div class="welcome-icon"></div>
+                        <h2>NVIDIA's CUDA Assistant</h2>
+                        <p>How can I help you with AI development today?</p>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="input-area">
+                    <textarea 
+                        id="messageInput" 
+                        class="message-input" 
+                        placeholder="Message AI Assistant..."
+                        rows="1"
+                        maxlength="4000"
+                    ></textarea>
+                    <div class="input-footer">
+                        <span class="char-count">
+                            <span id="charCount">0</span> / 4000 characters
+                        </span>
+                        <span class="input-hint">Shift + Enter for new line</span>
+                    </div>
+                    <button class="send-btn" id="sendBtn" aria-label="Send message">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+

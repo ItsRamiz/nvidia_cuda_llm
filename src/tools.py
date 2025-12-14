@@ -9,6 +9,8 @@ from langchain_openai import OpenAIEmbeddings
 import psycopg
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+from langchain.tools import tool
+from src.cuda_tools import has_compiled_executables, run_build_script
 
 load_dotenv()
 
@@ -32,7 +34,7 @@ MODE_ANALYSIS: Mode = "analysis"
 MODE_RAG: Mode = "rag"
 MODE_UNKNOWN: Mode = "unknown"
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]  # Go up from src/tools.py to project root
 
 def decide_workflow(state: AgentState) -> AgentState:
     """
@@ -99,13 +101,24 @@ def run_rag(state: AgentState) -> AgentState:
         return state
 
 
+def is_build_benchmark(state: AgentState) -> AgentState:
+    """
+    Checks whether the project root /code directory contains any .exe files or has any compiled executables.
+    If the function returns 1, then the benchmark exe has been built and the benchmark can be run, Dont do Anything!.
+    If the function returns 0, then the benchmark has not been built and the build script must be run.
+    """
+    if has_compiled_executables():
+        state["is_build_benchmark"] = True
+    else:
+        state["is_build_benchmark"] = False
+    return state
+
 def run_benchmark(state: AgentState) -> AgentState:
     """
     Run all .exe files under /code and store benchmark results in state.
     """
     with Trace("run_benchmark"):
-        project_root = Path(__file__).resolve().parent
-        code_dir = project_root / "code"
+        code_dir = ROOT / "code"
         exe_files = sorted(code_dir.glob("*.exe"))
 
         if not exe_files:
@@ -225,6 +238,10 @@ def expand_topics_with_rag(topics: list[dict]) -> list[str]:
 
 def route_by_mode(state: AgentState) -> Mode:
     return state.get("mode", "unknown")
+
+
+def route_for_benchmark():
+    return has_compiled_executables()
 
 
 def load_cuda_sources(path: str) -> List[Dict[str, str]]:

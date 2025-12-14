@@ -2,7 +2,8 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, START, END
 from models import AgentState
-from tools import decide_workflow, run_rag, route_by_mode, run_benchmark, run_analysis, load_cuda_sources, expand_topics_with_rag, extract_optimization_topics
+from src.tools import decide_workflow,route_for_benchmark, run_rag, route_by_mode, run_benchmark, run_analysis, load_cuda_sources, expand_topics_with_rag, extract_optimization_topics, is_build_benchmark
+from src.cuda_tools import run_build_script
 import json
 from datetime import datetime
 
@@ -14,10 +15,12 @@ app = Flask(__name__)
 graph = StateGraph(AgentState)
 graph.add_node("workflow", decide_workflow)
 graph.add_node("rag_node", run_rag)
-graph.add_node("benchmark_node", run_benchmark)
+graph.add_node("benchmark_node", lambda state: state)
+graph.add_node("run_benchmark", run_benchmark)
 graph.add_node("analysis_node", run_analysis)
-graph.add_node("analysis_rag", extract_optimization_topics)
-graph.add_node("analysis_reason", expand_topics_with_rag)
+# -----
+graph.add_node("build_benchmark_node", run_build_script)
+# -----
 
 graph.add_edge(START, "workflow")
 graph.add_conditional_edges(
@@ -25,13 +28,23 @@ graph.add_conditional_edges(
     route_by_mode,
     {
         "rag": "rag_node",
-        "benchmark": "benchmark_node",
+        "benchmark": "build_benchmark_node",
         "analysis": "analysis_node",
     }
 )
 
+graph.add_conditional_edges(
+    "benchmark_node",
+    route_for_benchmark,
+    {
+        0: "build_benchmark_node",
+        1: "run_benchmark"
+    }
+)
+
 graph.add_edge("rag_node", END)
-graph.add_edge("benchmark_node", END)
+graph.add_edge("build_benchmark_node", "run_benchmark")
+graph.add_edge("run_benchmark", END)
 graph.add_edge("analysis_node", END)
 
 app_graph = graph.compile()
@@ -53,6 +66,7 @@ def chat():
         initial_state: AgentState = {
             "prompt": user_message,
             "mode": "unknown",
+            "is_build_benchmark": False,
             "answer": "",
             "cuda_files": []
         }

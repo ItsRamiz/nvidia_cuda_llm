@@ -9,8 +9,9 @@ Mode = Literal["rag", "benchmark", "analysis", "unknown"]
 class AgentState(TypedDict):
     prompt: str
     mode: Optional[Mode]
-    answer: str
+    is_build_benchmark: bool
     cuda_files: List[Dict]
+    answer: str
 
 
 classifier_llm = ChatOpenAI(
@@ -25,6 +26,7 @@ rag_llm = ChatOpenAI(
 
 benchmark_llm = ChatOpenAI(
     model="gpt-4o",
+    tools=[],
     temperature=0.3
 )
 

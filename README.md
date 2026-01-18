@@ -4,6 +4,10 @@ A LangGraph-based AI agent that analyzes, optimizes, and benchmarks CUDA `.cu` s
 
 ---
 
+## Demo
+
+![Demo Screenshot](screenshots/Demo.png)
+
 ## Features
 
 - **RAG-Based Analysis** – Extracts optimization insights using domain-specific CUDA knowledge.
@@ -11,14 +15,6 @@ A LangGraph-based AI agent that analyzes, optimizes, and benchmarks CUDA `.cu` s
 - **Output Sanitization** – Cleans and formats LLM responses into user-ready summaries.
 
 ---
-
-## Architecture Overview
-
-The project uses LangGraph to define a stateful, conditional agent that routes requests across three primary modes:
-
-- **RAG Workflow** → Document-based optimization
-- **Static Analysis** → Code analysis and insights
-- **Benchmarking** → Executable detection, build, and runtime performance probe
 
 ### Graph Flow
 
